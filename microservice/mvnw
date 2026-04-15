@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -e
+BASEDIR=$(cd "$(dirname "$0")" && pwd)
+WRAPPER_JAR="$BASEDIR/.mvn/wrapper/maven-wrapper.jar"
+PROJECT_SETTINGS="$BASEDIR/settings.xml"
+
+# Prefer local mvn if available on PATH
+if command -v mvn >/dev/null 2>&1; then
+  if [ -f "$PROJECT_SETTINGS" ]; then
+    exec mvn -s "$PROJECT_SETTINGS" "$@"
+  else
+    exec mvn "$@"
+  fi
+fi
+
+# Fall back to Maven Wrapper
+if [ ! -f "$WRAPPER_JAR" ]; then
+  echo "Downloading maven-wrapper.jar..."
+  mkdir -p "$BASEDIR/.mvn/wrapper"
+  if command -v curl >/dev/null 2>&1; then
+    curl -sS -L -o "$WRAPPER_JAR" "https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.2/maven-wrapper-3.3.2.jar"
+  else
+    wget -q -O "$WRAPPER_JAR" "https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.2/maven-wrapper-3.3.2.jar"
+  fi
+fi
+if [ -f "$PROJECT_SETTINGS" ]; then
+  exec java -cp "$WRAPPER_JAR" org.apache.maven.wrapper.MavenWrapperMain -s "$PROJECT_SETTINGS" "$@"
+else
+  exec java -cp "$WRAPPER_JAR" org.apache.maven.wrapper.MavenWrapperMain "$@"
+fi

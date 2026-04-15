@@ -1,0 +1,17 @@
+CREATE TABLE IF NOT EXISTS customers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL,
+    description TEXT NOT NULL,
+    amount NUMERIC NOT NULL,
+    order_date TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'PENDING',
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+);
