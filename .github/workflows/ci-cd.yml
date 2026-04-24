@@ -6,10 +6,6 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/microservice
-
 jobs:
   # ─── Stage 1: Build ──────────────────────────────────────────────────────────
   build:
@@ -109,15 +105,12 @@ jobs:
             -Dsonar.organization=dclaff \
             -Dsonar.host.url=https://sonarcloud.io
 
-  # ─── Stage 4: Docker Build & Push ────────────────────────────────────────────
+  # ─── Stage 4: Docker Build ───────────────────────────────────────────────────
   docker:
-    name: Docker Build & Push
+    name: Docker Build
     runs-on: ubuntu-latest
     needs: sonar
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: read
-      packages: write
 
     steps:
       - name: Checkout source
@@ -134,30 +127,21 @@ jobs:
         working-directory: microservice
         run: mvn -B -DskipTests package
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
-
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=sha,prefix=sha-
-            type=raw,value=latest
-
-      - name: Build and push Docker image
+      - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
           context: microservice
           file: microservice/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          push: false
+          tags: microservice:${{ github.sha }}
+          outputs: type=docker,dest=/tmp/microservice.tar
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp/microservice.tar
+          retention-days: 1
 
   # ─── Stage 5: Deploy ─────────────────────────────────────────────────────────
   deploy:
@@ -168,24 +152,19 @@ jobs:
     environment: production
 
     steps:
-      - name: Pull and run latest image
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load Docker image
+        run: docker load --input /tmp/microservice.tar
+
+      - name: Deploy container
         run: |
-          if [ -z "$DEPLOY_HOST" ]; then
-            echo "No deploy host configured — skipping remote deploy."
-            echo "To enable: add DEPLOY_HOST, DEPLOY_USER and DEPLOY_SSH_KEY secrets."
-            exit 0
-          fi
-          echo "$DEPLOY_KEY" > /tmp/deploy_key
-          chmod 600 /tmp/deploy_key
-          ssh -o StrictHostKeyChecking=no -i /tmp/deploy_key \
-            "$DEPLOY_USER@$DEPLOY_HOST" \
-            "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest && \
-             docker stop microservice || true && \
-             docker rm microservice || true && \
-             docker run -d --name microservice -p 8082:8082 \
-               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          rm -f /tmp/deploy_key
+          docker stop microservice 2>/dev/null || true
+          docker rm microservice 2>/dev/null || true
+          docker run -d --name microservice -p 8082:8082 \
+            microservice:${{ github.sha }}
+          echo "Container started: $(docker ps --filter name=microservice --format '{{.Status}}')"
