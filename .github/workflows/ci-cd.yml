@@ -133,8 +133,11 @@ jobs:
           context: microservice
           file: microservice/Dockerfile
           push: false
+          load: true
           tags: microservice:${{ github.sha }}
-          outputs: type=docker,dest=/tmp/microservice.tar
+
+      - name: Export Docker image to tar
+        run: docker save microservice:${{ github.sha }} -o /tmp/microservice.tar
 
       - name: Upload Docker image artifact
         uses: actions/upload-artifact@v4
