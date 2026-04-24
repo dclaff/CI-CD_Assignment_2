@@ -10,6 +10,8 @@ public class Order {
     private BigDecimal amount;
     private LocalDate orderDate;
     private String status;
+    private Long productId;
+    private String productName;
 
     public Order() {}
 
@@ -40,4 +42,10 @@ public class Order {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public Long getProductId() { return productId; }
+    public void setProductId(Long productId) { this.productId = productId; }
+
+    public String getProductName() { return productName; }
+    public void setProductName(String productName) { this.productName = productName; }
 }

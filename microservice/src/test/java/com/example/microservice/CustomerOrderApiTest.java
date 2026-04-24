@@ -1,9 +1,11 @@
 package com.example.microservice;
 
+import com.example.microservice.client.ServiceBClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -17,6 +19,9 @@ public class CustomerOrderApiTest {
 
     @Autowired
     private MockMvc mvc;
+
+    @MockBean
+    private ServiceBClient serviceBClient;
 
     /* ==========================
      *  Customer endpoints

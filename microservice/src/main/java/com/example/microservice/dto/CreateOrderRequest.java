@@ -28,6 +28,9 @@ public class CreateOrderRequest {
 
     private String status;
 
+    // Optional: when provided, Service A validates the product via Service B
+    private Long productId;
+
     public CreateOrderRequest() {}
 
     public String getDescription() { return description; }
@@ -41,4 +44,7 @@ public class CreateOrderRequest {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public Long getProductId() { return productId; }
+    public void setProductId(Long productId) { this.productId = productId; }
 }

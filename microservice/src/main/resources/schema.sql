@@ -13,5 +13,7 @@ CREATE TABLE IF NOT EXISTS orders (
     amount NUMERIC NOT NULL,
     order_date TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'PENDING',
+    product_id INTEGER,
+    product_name TEXT,
     FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
 );

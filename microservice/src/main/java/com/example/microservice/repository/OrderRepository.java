@@ -27,13 +27,16 @@ public class OrderRepository {
         o.setAmount(rs.getBigDecimal("amount"));
         o.setOrderDate(LocalDate.parse(rs.getString("order_date")));
         o.setStatus(rs.getString("status"));
+        long pid = rs.getLong("product_id");
+        if (!rs.wasNull()) o.setProductId(pid);
+        o.setProductName(rs.getString("product_name"));
         return o;
     };
 
     /* ---- orders for a specific customer (paginated) ---- */
     public List<Order> findByCustomerId(Long customerId, int offset, int limit) {
         return jdbc.query(
-                "SELECT id, customer_id, description, amount, order_date, status "
+                "SELECT id, customer_id, description, amount, order_date, status, product_id, product_name "
                         + "FROM orders WHERE customer_id = ? ORDER BY order_date DESC LIMIT ? OFFSET ?",
                 mapper, customerId, limit, offset
         );
@@ -49,7 +52,7 @@ public class OrderRepository {
     /* ---- single order scoped to customer ---- */
     public Optional<Order> findByIdAndCustomerId(Long id, Long customerId) {
         List<Order> list = jdbc.query(
-                "SELECT id, customer_id, description, amount, order_date, status "
+                "SELECT id, customer_id, description, amount, order_date, status, product_id, product_name "
                         + "FROM orders WHERE id = ? AND customer_id = ?",
                 mapper, id, customerId
         );
@@ -61,7 +64,7 @@ public class OrderRepository {
                                LocalDate startDate, LocalDate endDate, String sortDir) {
 
         StringBuilder sql = new StringBuilder(
-                "SELECT id, customer_id, description, amount, order_date, status FROM orders");
+                "SELECT id, customer_id, description, amount, order_date, status, product_id, product_name FROM orders");
         List<Object> params = new ArrayList<>();
 
         appendDateFilter(sql, params, startDate, endDate);
@@ -89,18 +92,21 @@ public class OrderRepository {
     public Order save(Order order) {
         if (order.getId() == null) {
             jdbc.update(
-                    "INSERT INTO orders(customer_id, description, amount, order_date, status) "
-                            + "VALUES (?, ?, ?, ?, ?)",
+                    "INSERT INTO orders(customer_id, description, amount, order_date, status, product_id, product_name) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?)",
                     order.getCustomerId(), order.getDescription(), order.getAmount(),
-                    order.getOrderDate().toString(), order.getStatus()
+                    order.getOrderDate().toString(), order.getStatus(),
+                    order.getProductId(), order.getProductName()
             );
             Long id = jdbc.queryForObject("SELECT last_insert_rowid()", Long.class);
             order.setId(id);
         } else {
             jdbc.update(
-                    "UPDATE orders SET description = ?, amount = ?, order_date = ?, status = ? WHERE id = ?",
+                    "UPDATE orders SET description = ?, amount = ?, order_date = ?, status = ?, "
+                            + "product_id = ?, product_name = ? WHERE id = ?",
                     order.getDescription(), order.getAmount(),
-                    order.getOrderDate().toString(), order.getStatus(), order.getId()
+                    order.getOrderDate().toString(), order.getStatus(),
+                    order.getProductId(), order.getProductName(), order.getId()
             );
         }
         return order;

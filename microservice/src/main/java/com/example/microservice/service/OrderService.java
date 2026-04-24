@@ -1,10 +1,13 @@
 package com.example.microservice.service;
 
+import com.example.microservice.client.ServiceBClient;
 import com.example.microservice.dto.*;
 import com.example.microservice.exception.ResourceNotFoundException;
 import com.example.microservice.model.Order;
 import com.example.microservice.repository.CustomerRepository;
 import com.example.microservice.repository.OrderRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -18,12 +21,17 @@ import java.util.List;
 @Service
 public class OrderService {
 
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+
     private final OrderRepository orderRepo;
     private final CustomerRepository customerRepo;
+    private final ServiceBClient serviceBClient;
 
-    public OrderService(OrderRepository orderRepo, CustomerRepository customerRepo) {
+    public OrderService(OrderRepository orderRepo, CustomerRepository customerRepo,
+                        ServiceBClient serviceBClient) {
         this.orderRepo = orderRepo;
         this.customerRepo = customerRepo;
+        this.serviceBClient = serviceBClient;
     }
 
     /* ---- orders for a customer (paginated) ---- */
@@ -56,6 +64,20 @@ public class OrderService {
         order.setAmount(request.getAmount());
         order.setOrderDate(request.getOrderDate());
         order.setStatus(request.getStatus() != null ? request.getStatus() : "PENDING");
+
+        // If a productId is provided, validate it exists in Service B and snapshot the product name
+        if (request.getProductId() != null) {
+            log.info("Order creation: looking up product id={} via Service B", request.getProductId());
+            ProductDTO product = serviceBClient.getProduct(request.getProductId());
+            if (product != null) {
+                order.setProductId(product.getId());
+                order.setProductName(product.getName());
+                log.info("Product '{}' confirmed via Service B for order", product.getName());
+            } else {
+                log.warn("Service B unavailable — proceeding without product enrichment");
+                order.setProductId(request.getProductId());
+            }
+        }
 
         Order saved = orderRepo.save(order);
         return toDTO(saved);
@@ -113,6 +135,8 @@ public class OrderService {
         dto.setAmount(order.getAmount());
         dto.setOrderDate(order.getOrderDate());
         dto.setStatus(order.getStatus());
+        dto.setProductId(order.getProductId());
+        dto.setProductName(order.getProductName());
         return dto;
     }
 }

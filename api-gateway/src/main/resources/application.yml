@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: api-gateway
+  config:
+    import: optional:configserver:http://localhost:8888
+  cloud:
+    gateway:
+      routes:
+        - id: microservice
+          uri: lb://microservice
+          predicates:
+            - Path=/api/customers/**,/api/orders/**,/api/service-a/**
+        - id: service-b
+          uri: lb://service-b
+          predicates:
+            - Path=/api/service-b/**
+
+server:
+  port: 8080
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+jwt:
+  secret: microservicesJwtSecretKey2026AssignmentProjectSecretKey
+  expiration: 3600000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
